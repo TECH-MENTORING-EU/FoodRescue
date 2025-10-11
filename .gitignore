@@ -52,3 +52,12 @@ CodeCoverage/
 *.VisualState.xml
 TestResult.xml
 nunit-*.xml
+
+# Node modules and npm
+node_modules/
+
+# Generated CSS
+wwwroot/css/app.css
+
+# Bootstrap (comes from CDN or npm)
+wwwroot/lib/
