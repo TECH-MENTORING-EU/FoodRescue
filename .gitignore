@@ -59,3 +59,6 @@ package-lock.json
 
 # Generated CSS
 wwwroot/css/app.css
+
+# Bootstrap (comes from CDN or npm)
+wwwroot/lib/
