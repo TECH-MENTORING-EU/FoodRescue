@@ -61,3 +61,10 @@ wwwroot/css/app.css
 
 # Bootstrap (comes from CDN or npm)
 wwwroot/lib/
+/.vs/FoodRescue/copilot-chat/9dcd431f/sessions
+/.vs/FoodRescue/CopilotIndices/17.14.1147.5054
+/.vs/FoodRescue/DesignTimeBuild
+/.vs/FoodRescue/FileContentIndex
+/.vs/FoodRescue/v17
+/.vs/ProjectEvaluation
+/src/FoodRescue.Web/FoodRescue.Web.csproj.user
