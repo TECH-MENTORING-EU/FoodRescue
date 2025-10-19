@@ -1,0 +1,199 @@
+﻿@page "/food-recognizer"
+
+@inject HttpClient Http
+@inject IConfiguration Configuration
+
+@using System.Net.Mime
+@using Azure.AI.OpenAI
+@using OpenAI
+@using OpenAI.Chat
+@using System.ClientModel
+using OpenAI;
+using OpenAI.Chat;
+using System.ClientModel;
+
+@code {
+    public enum ChatRole
+    {
+        User,
+        Assistant,
+        System
+    }
+}
+
+<!--
+PSEUDOCODE PLAN:
+- When user selects an image:
+  - Validate it's an image; show error if not.
+  - Read file stream (<= 5MB) into a byte[] for preview and AI request.
+  - Create data URL for preview and set imagePreviewUrl.
+- Build Azure OpenAI client:
+  - Read endpoint, subscription key, and deployment name from configuration.
+  - Validate configuration values; show error if missing.
+  - Create AzureOpenAIClient and a ChatClient via GetChatClient(deploymentName).
+- Send multimodal chat request:
+  - Create a user message with:
+    - Text: "list the food and its quantity in the picture"
+    - Image: the uploaded image as binary, with correct MIME type.
+  - Call CompleteChatAsync with the single user message.
+  - Extract the response OutputText and assign to imageCaption.
+- Handle errors:
+  - Catch exceptions, set errorMessage, and ensure isLoading is reset in finally.
+- UI:
+  - Show spinner while loading.
+  - Show error if any.
+  - Show image preview and the AI response below the image.
+-->
+
+<div class="page-container">
+    <h3>Analizator Żywności na Zdjęciach</h3>
+    <p>Upuść obraz, wklej (Ctrl+V) lub kliknij, aby wybrać plik.</p>
+
+    <div @ref="dropZoneElement">
+
+        <InputFile OnChange="HandleFileSelected" class="file-input" id="fileInput" />
+        <label for="fileInput" class="drop-zone-label">
+            @if (!string.IsNullOrEmpty(imagePreviewUrl))
+            {
+                <img src="@imagePreviewUrl" class="image-preview" alt="Podgląd obrazu" />
+            }
+            else
+            {
+                <span>+</span>
+                <p>Upuść obraz lub kliknij, aby wybrać</p>
+            }
+        </label>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="status-message loading-message">
+            <div class="spinner"></div>
+            <p>Analizuję obraz, proszę czekać...</p>
+        </div>
+    }
+
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="status-message error-message">
+            <p><strong>Błąd:</strong> @errorMessage</p>
+        </div>
+    }
+
+    @if (!string.IsNullOrEmpty(imageCaption))
+    {
+        <div class="results-container">
+            <h4>Opis obrazu:</h4>
+            <p>@imageCaption</p>
+        </div>
+    }
+
+</div>
+
+@code {
+    private string? imagePreviewUrl;
+    private bool isLoading = false;
+    private string? errorMessage;
+    private string? imageCaption;
+    private IJSObjectReference? module;
+    private DotNetObjectReference<FoodRecognizer>? dotNetHelper;
+    private bool isDragOver = false;
+    private ElementReference dropZoneElement;
+
+    // Obsługa wyboru pliku z <InputFile>
+    private async Task HandleFileSelected(InputFileChangeEventArgs e)
+    {
+        isDragOver = false;
+        errorMessage = null;
+        imageCaption = null;
+
+        var file = e.File;
+        if (file != null)
+        {
+            await ProcessAndAnalyzeImage(file);
+        }
+    }
+
+    /*
+    PSEUDOCODE PLAN (update only the Azure OpenAI call to send text + image):
+    - Validate file is an image.
+    - Read file stream (<=5MB) into byte[] and set preview data URL.
+    - Build Azure OpenAI ChatClient with:
+      - model = deploymentName (from config)
+      - ApiKeyCredential(subscriptionKey)
+      - OpenAIClientOptions { Endpoint = new Uri(endpointValue) }
+    - Create a single user message with two content parts:
+      - Text: ask to list food and quantities, respond in Polish.
+      - Image: the uploaded image as binary with correct MIME type.
+    - Call CompleteChatAsync with the user message.
+    - Set imageCaption = completion.OutputText.
+    - Handle errors; reset loading in finally.
+    */
+
+    // REPLACEMENT: main logic to process and send the image with a user message
+    private async Task ProcessAndAnalyzeImage(IBrowserFile file)
+    {
+        if (string.IsNullOrWhiteSpace(file.ContentType) || !file.ContentType.Contains("image", StringComparison.OrdinalIgnoreCase))
+        {
+            errorMessage = "Wybrany plik nie jest obrazem.";
+            return;
+        }
+
+        isLoading = true;
+
+        try
+        {
+            // Read image (<= 5MB) and set preview
+            await using var imageStream = file.OpenReadStream(maxAllowedSize: 5 * 1024 * 1024);
+            using var ms = new MemoryStream();
+            await imageStream.CopyToAsync(ms);
+            var imageBytes = ms.ToArray();
+            imagePreviewUrl = $"data:{file.ContentType};base64,{Convert.ToBase64String(imageBytes)}";
+
+            // Load Azure OpenAI configuration
+            var endpointValue = Configuration["AzureAiEndpoint"];
+            var subscriptionKey = Configuration["AzureAiSubscriptionKey"];
+            var deploymentName = Configuration["AzureAiDeploymentName"];
+
+            if (string.IsNullOrWhiteSpace(endpointValue) ||
+                string.IsNullOrWhiteSpace(subscriptionKey) ||
+                string.IsNullOrWhiteSpace(deploymentName))
+            {
+                errorMessage = "Brakuje konfiguracji Azure AI (Endpoint, SubscriptionKey lub DeploymentName).";
+                return;
+            }
+
+            // Build ChatClient for Azure OpenAI (deploymentName is your model deployment)
+            // Note: ChatClient should be instantiated from an AzureOpenAIClient instance for Azure OpenAI services.
+            var azureOpenAIClient = new AzureOpenAIClient(
+                new Uri(endpointValue),
+                new ApiKeyCredential(subscriptionKey)
+            );
+            ChatClient client = azureOpenAIClient.GetChatClient(deploymentName);
+
+            // Create a multimodal user message: text + image (binary)
+            var userMessage = new UserChatMessage([
+                ChatMessageContentPart.CreateTextPart("Wypisz listę jedzenia i jego ilości widoczne na obrazku. Odpowiedz zwięźle po polsku."),
+                ChatMessageContentPart.CreateImagePart(new BinaryData(imageBytes), file.ContentType)
+            ]);
+
+            // Send request and extract the text response
+            ChatCompletion completion = await client.CompleteChatAsync(new ChatMessage[] { userMessage });
+
+            // For more robust handling, check the completion before accessing its properties
+            if (completion != null && completion.Content != null && completion.Content.Any())
+            {
+                imageCaption = completion.Content.First().Text.Trim();
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Wystąpił wyjątek: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+}

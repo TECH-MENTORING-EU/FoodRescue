@@ -1,7 +1,8 @@
-using FoodRescue.Web.Authentication;
 using FoodRescue.Web.Components;
-using FoodRescue.Web.Repositories;
 using FoodRescue.Web.Services;
+using FoodRescue.Web.Repositories;
+using Microsoft.AspNetCore.Authentication;
+using FoodRescue.Web.Authentication;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -9,26 +10,15 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
-// Register database and repository services
-builder.Services.AddSingleton<IDatabaseService, DatabaseService>();
+builder.Services.AddScoped<IDatabaseService, DatabaseService>();
 builder.Services.AddScoped<IFoodDonationRepository, FoodDonationRepository>();
 builder.Services.AddScoped<ITestDataService, TestDataService>();
 
-// Configure authentication - use dev auth in development
-if (builder.Environment.IsDevelopment())
-{
-    builder.Services.AddAuthentication("DevAuth")
-        .AddDevAuthentication();
-}
-else
-{
-    // In production, you would configure proper authentication here
-    // For example: Azure AD, IdentityServer, or ASP.NET Core Identity
-    builder.Services.AddAuthentication("DevAuth")
-        .AddDevAuthentication();
-}
+builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(builder.Configuration["ApiBaseAddress"] ?? "http://localhost:5139") });
 
-builder.Services.AddAuthorization();
+builder.Services.AddAuthentication("DevScheme")
+    .AddScheme<AuthenticationSchemeOptions, DevAuthenticationHandler>("DevScheme", null);
+
 
 var app = builder.Build();
 
@@ -42,13 +32,16 @@ if (!app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-app.UseAuthentication();
-app.UseAuthorization();
-
+app.UseStaticFiles();
 app.UseAntiforgery();
 
-app.MapStaticAssets();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
+
+using (var scope = app.Services.CreateScope())
+{
+    var testDataService = scope.ServiceProvider.GetRequiredService<ITestDataService>();
+    testDataService.GenerateFoodDonations(); // Replace Seed() with GenerateFoodDonations()
+}
 
 app.Run();
