@@ -1,4 +1,6 @@
 ﻿@page "/food-recognizer"
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
 
 @inject HttpClient Http
 @inject IConfiguration Configuration
@@ -8,9 +10,6 @@
 @using OpenAI
 @using OpenAI.Chat
 @using System.ClientModel
-using OpenAI;
-using OpenAI.Chat;
-using System.ClientModel;
 
 @code {
     public enum ChatRole
@@ -21,47 +20,42 @@ using System.ClientModel;
     }
 }
 
-<!--
-PSEUDOCODE PLAN:
-- When user selects an image:
-  - Validate it's an image; show error if not.
-  - Read file stream (<= 5MB) into a byte[] for preview and AI request.
-  - Create data URL for preview and set imagePreviewUrl.
-- Build Azure OpenAI client:
-  - Read endpoint, subscription key, and deployment name from configuration.
-  - Validate configuration values; show error if missing.
-  - Create AzureOpenAIClient and a ChatClient via GetChatClient(deploymentName).
-- Send multimodal chat request:
-  - Create a user message with:
-    - Text: "list the food and its quantity in the picture"
-    - Image: the uploaded image as binary, with correct MIME type.
-  - Call CompleteChatAsync with the single user message.
-  - Extract the response OutputText and assign to imageCaption.
-- Handle errors:
-  - Catch exceptions, set errorMessage, and ensure isLoading is reset in finally.
-- UI:
-  - Show spinner while loading.
-  - Show error if any.
-  - Show image preview and the AI response below the image.
--->
-
 <div class="page-container">
-    <h3>Analizator Żywności na Zdjęciach</h3>
-    <p>Upuść obraz, wklej (Ctrl+V) lub kliknij, aby wybrać plik.</p>
+    <div class="prompt-editor">
+        <label for="promptText" class="prompt-label">Polecenie (możesz edytować):</label>
+        <InputTextArea id="promptText"
+                       class="prompt-textarea"
+                       placeholder="Wpisz polecenie do analizy obrazu..."
+                       @bind-Value="promptText"
+                       rows="3" />
+        <div class="prompt-actions">
+            <button type="button"
+                    class="analyze-button"
+                    @onclick="OnAnalyzeClick"
+                    disabled="@fileIsMissing">
+                @if (isLoading)
+                {
+                    <span>Analizuję...</span>
+                }
+                else
+                {
+                    <span>Analizuj obraz</span>
+                }
+            </button>
+            @if (selectedFile is null)
+            {
+                <span class="hint-text">Najpierw wybierz obraz poniżej.</span>
+            }
+        </div>
+    </div>
 
-    <div @ref="dropZoneElement">
-
+    <div>
         <InputFile OnChange="HandleFileSelected" class="file-input" id="fileInput" />
         <label for="fileInput" class="drop-zone-label">
             @if (!string.IsNullOrEmpty(imagePreviewUrl))
             {
                 <img src="@imagePreviewUrl" class="image-preview" alt="Podgląd obrazu" />
-            }
-            else
-            {
-                <span>+</span>
-                <p>Upuść obraz lub kliknij, aby wybrać</p>
-            }
+            }            
         </label>
     </div>
 
@@ -91,46 +85,47 @@ PSEUDOCODE PLAN:
 </div>
 
 @code {
+    private const string DefaultPrompt = "Wypisz listę jedzenia i jego ilości widoczne na obrazku. Odpowiedz zwięźle po polsku.";
+    private string promptText = DefaultPrompt;
+
+    private IBrowserFile? selectedFile;
     private string? imagePreviewUrl;
     private bool isLoading = false;
     private string? errorMessage;
     private string? imageCaption;
-    private IJSObjectReference? module;
-    private DotNetObjectReference<FoodRecognizer>? dotNetHelper;
-    private bool isDragOver = false;
-    private ElementReference dropZoneElement;
+    private bool fileIsMissing = true;
+    private byte[] imageBytes;
 
-    // Obsługa wyboru pliku z <InputFile>
     private async Task HandleFileSelected(InputFileChangeEventArgs e)
-    {
-        isDragOver = false;
+    {       
         errorMessage = null;
         imageCaption = null;
 
         var file = e.File;
-        if (file != null)
-        {
-            await ProcessAndAnalyzeImage(file);
-        }
+        selectedFile = file;
+        fileIsMissing = false;
+
+        await using var imageStream = file.OpenReadStream(maxAllowedSize: 5 * 1024 * 1024);
+        using var ms = new MemoryStream();
+        await imageStream.CopyToAsync(ms);
+        imageBytes = ms.ToArray();
+        imagePreviewUrl = $"data:{file.ContentType};base64,{Convert.ToBase64String(imageBytes)}";
     }
 
-    /*
-    PSEUDOCODE PLAN (update only the Azure OpenAI call to send text + image):
-    - Validate file is an image.
-    - Read file stream (<=5MB) into byte[] and set preview data URL.
-    - Build Azure OpenAI ChatClient with:
-      - model = deploymentName (from config)
-      - ApiKeyCredential(subscriptionKey)
-      - OpenAIClientOptions { Endpoint = new Uri(endpointValue) }
-    - Create a single user message with two content parts:
-      - Text: ask to list food and quantities, respond in Polish.
-      - Image: the uploaded image as binary with correct MIME type.
-    - Call CompleteChatAsync with the user message.
-    - Set imageCaption = completion.OutputText.
-    - Handle errors; reset loading in finally.
-    */
+    private async Task OnAnalyzeClick()
+    {
+        errorMessage = null;
+        imageCaption = null;
 
-    // REPLACEMENT: main logic to process and send the image with a user message
+        if (selectedFile is null)
+        {
+            errorMessage = "Najpierw wybierz obraz do analizy.";
+            return;
+        }
+
+        await ProcessAndAnalyzeImage(selectedFile);
+    }
+
     private async Task ProcessAndAnalyzeImage(IBrowserFile file)
     {
         if (string.IsNullOrWhiteSpace(file.ContentType) || !file.ContentType.Contains("image", StringComparison.OrdinalIgnoreCase))
@@ -142,13 +137,7 @@ PSEUDOCODE PLAN:
         isLoading = true;
 
         try
-        {
-            // Read image (<= 5MB) and set preview
-            await using var imageStream = file.OpenReadStream(maxAllowedSize: 5 * 1024 * 1024);
-            using var ms = new MemoryStream();
-            await imageStream.CopyToAsync(ms);
-            var imageBytes = ms.ToArray();
-            imagePreviewUrl = $"data:{file.ContentType};base64,{Convert.ToBase64String(imageBytes)}";
+        {           
 
             // Load Azure OpenAI configuration
             var endpointValue = Configuration["AzureAiEndpoint"];
@@ -172,8 +161,10 @@ PSEUDOCODE PLAN:
             ChatClient client = azureOpenAIClient.GetChatClient(deploymentName);
 
             // Create a multimodal user message: text + image (binary)
+            var textToSend = string.IsNullOrWhiteSpace(promptText) ? DefaultPrompt : promptText;
+
             var userMessage = new UserChatMessage([
-                ChatMessageContentPart.CreateTextPart("Wypisz listę jedzenia i jego ilości widoczne na obrazku. Odpowiedz zwięźle po polsku."),
+                ChatMessageContentPart.CreateTextPart(textToSend),
                 ChatMessageContentPart.CreateImagePart(new BinaryData(imageBytes), file.ContentType)
             ]);
 

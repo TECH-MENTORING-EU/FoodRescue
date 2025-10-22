@@ -1,0 +1,102 @@
+﻿body {
+}
+    
+/* Image preview */
+.image-preview {
+    max-height: 400px;
+    max-width: 100%;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+}
+
+/* Prompt editor */
+.prompt-editor {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.prompt-editor label {
+    display: block;
+    margin-bottom: 0.25rem;
+     display: block;
+    font-weight: 600;
+    color: #1f2937; /* slate-800 */
+    margin-bottom: 0.5rem;
+}
+
+/* ID-based fallback if using id="promptText" (supports Blazor CSS isolation via ::deep) */
+#promptText,
+textarea#promptText,
+::deep #promptText,
+::deep textarea#promptText {
+    width: 500px;
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    padding: 0.75rem 0.9rem;
+    border: 2px solid #cbd5e1; /* slate-300 */
+    border-radius: 8px;
+    background: #ffffff;
+    color: #111827; /* gray-900 */
+    box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+    transition: border-color 120ms ease, box-shadow 120ms ease, background 120ms ease;
+    resize: vertical;
+}
+
+
+.prompt-textarea::placeholder {
+    color: #94a3b8; /* slate-400 */
+}
+
+.prompt-textarea:focus {
+    outline: none;
+    border-color: #2563eb; /* blue-600 */
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.20);
+    background: #ffffff;
+}
+
+/* Actions row */
+.prompt-actions {
+    margin-top: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+/* Analyze button */
+.analyze-button {
+    appearance: none;
+    border: none;
+    border-radius: 6px;
+    padding: 0.55rem 1rem;
+    background: #2563eb; /* blue-600 */
+    color: #ffffff;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    transition: background 120ms ease, transform 50ms ease;
+}
+
+.analyze-button:hover:not([disabled]) {
+    background: #1d4ed8; /* blue-700 */
+}
+
+.analyze-button:active:not([disabled]) {
+    transform: translateY(1px);
+}
+
+.analyze-button[disabled] {
+    background: #93c5fd; /* blue-300 */
+    cursor: not-allowed;
+}
+
+/* Hint text */
+.hint-text {
+    color: #64748b; /* slate-500 */
+    font-size: 0.9rem;
+}
