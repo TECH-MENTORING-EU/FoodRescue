@@ -3,8 +3,39 @@ using FoodRescue.Web.Services;
 using FoodRescue.Web.Repositories;
 using Microsoft.AspNetCore.Authentication;
 using FoodRescue.Web.Authentication;
+using Microsoft.AspNetCore.Authentication.Negotiate;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Add services to the container.
+if (builder.Environment.IsDevelopment())
+{
+    // Use the dev authentication scheme during development
+    builder.Services.AddAuthentication(options =>
+    {
+        options.DefaultScheme = "DevAuth";
+        options.DefaultChallengeScheme = "DevAuth";
+    }).AddDevAuthentication();
+}
+else
+{
+    // Use Windows Authentication in other environments
+    builder.Services.AddAuthentication(NegotiateDefaults.AuthenticationScheme)
+        .AddNegotiate();
+}
+
+
+builder.Services.AddAuthorization(options =>
+{
+    // Sets the fallback policy to require authenticated users for all pages.
+    options.FallbackPolicy = options.DefaultPolicy;
+});
+
+// For Blazor to expose the authentication state as a cascading parameter.
+builder.Services.AddCascadingAuthenticationState();
+
+// Add the HttpContextAccessor service for accessing the user's identity.
+builder.Services.AddHttpContextAccessor();
 
 // Add services to the container.
 builder.Services.AddRazorComponents()
@@ -23,6 +54,12 @@ builder.Services.AddScoped<FoodAnalysisStore>();
 
 
 var app = builder.Build();
+
+app.UseAuthentication();
+app.UseAuthorization();
+
+
+
 
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
