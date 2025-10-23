@@ -19,6 +19,8 @@ builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(builder.
 builder.Services.AddAuthentication("DevScheme")
     .AddScheme<AuthenticationSchemeOptions, DevAuthenticationHandler>("DevScheme", null);
 
+builder.Services.AddScoped<FoodAnalysisStore>();
+
 
 var app = builder.Build();
 

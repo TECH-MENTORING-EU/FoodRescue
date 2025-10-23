@@ -2,15 +2,15 @@
 
 @inject HttpClient Http
 @inject IConfiguration Configuration
+@inject FoodAnalysisStore Store
+
 
 @using System.Net.Mime
 @using Azure.AI.OpenAI
+@using FoodRescue.Web.Services
 @using OpenAI
 @using OpenAI.Chat
 @using System.ClientModel
-using OpenAI;
-using OpenAI.Chat;
-using System.ClientModel;
 
 @code {
     public enum ChatRole
@@ -184,6 +184,8 @@ PSEUDOCODE PLAN:
             if (completion != null && completion.Content != null && completion.Content.Any())
             {
                 imageCaption = completion.Content.First().Text.Trim();
+
+                Store.Add(imagePreviewUrl!, imageCaption);
             }
         }
         catch (Exception ex)

@@ -1,0 +1,37 @@
+﻿@page "/food-recognitions"
+@using FoodRescue.Web.Services
+@using FoodRescue.Web.Models
+@inject ITestDataService TestDataService
+@inject ILogger<Donations> Logger
+@inject FoodAnalysisStore Store
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+
+@if (Store.Results.Any())
+{
+
+    <h4 class="text-base font-medium mb-3 text-gray-700">Poprzednie analizy:</h4>
+
+    <div class="grid md:grid-cols-3 gap-8 mb-12">
+        @foreach (var item in Store.Results)
+        {
+            <div class="bg-white rounded-lg shadow-lg p-6 hover:shadow-xl transition-shadow">
+                <img src="@item.ImageBase64"
+                     alt="@item.Caption"
+                     class="w-full aspect-square object-cover rounded-md" />
+
+                <p class="mt-1 text-xs text-gray-600 text-center truncate w-full w-24">
+                    @item.Caption
+                </p>
+            </div>
+        }
+    </div>
+
+}
+else
+{
+    <p class="text-sm text-gray-500 italic">Brak wyników analizy.</p>
+}
+
+@code {
+
+}
