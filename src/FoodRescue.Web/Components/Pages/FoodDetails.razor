@@ -161,12 +161,8 @@ else
                         : food.numericAmount + (parts.Length > 1 ? " " + parts[1] : "");
                 }
             }
-            else
-            {
-                // Non-numeric: mark as Brak
+            else if (food.reserveInput > 0)
                 food.amount = "Brak";
-            }
-
             // Reset input for next reservation
             food.reserveInput = 0;
         }
