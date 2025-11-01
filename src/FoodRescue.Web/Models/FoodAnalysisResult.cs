@@ -11,7 +11,6 @@ namespace FoodRescue.Web.Models
 
         public string JsonTable { get; set; } = string.Empty;
 
-
         public DateTime CreatedAt { get; set; } = DateTime.Now;
 
         public List<FoodItem> FoodItems { get; set; } = new();
