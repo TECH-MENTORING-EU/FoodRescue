@@ -3,7 +3,7 @@
 @using FoodRescue.Web.Models
 @inject ITestDataService TestDataService
 @inject ILogger<Donations> Logger
-@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Developer")]
 
 <PageTitle>Food Donations</PageTitle>
 

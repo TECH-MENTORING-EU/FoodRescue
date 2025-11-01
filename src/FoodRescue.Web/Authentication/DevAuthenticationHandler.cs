@@ -5,27 +5,49 @@ using Microsoft.Extensions.Options;
 
 namespace FoodRescue.Web.Authentication;
 
+public class DevAuthOptions
+{
+    public string Name { get; set; } = "Developer";
+    public string Email { get; set; } = "dev@foodrescue.local";
+    public string[] Roles { get; set; } // default roles for local testing
+}
+
 public class DevAuthenticationHandler : AuthenticationHandler<AuthenticationSchemeOptions>
 {
+    private readonly IOptions<DevAuthOptions> _options;
+
     public DevAuthenticationHandler(
-        IOptionsMonitor<AuthenticationSchemeOptions> options, 
+        IOptionsMonitor<AuthenticationSchemeOptions> options,
         ILoggerFactory logger,
-        UrlEncoder encoder)
+        UrlEncoder encoder,
+        IOptions<DevAuthOptions> devOptions)
         : base(options, logger, encoder)
     {
+        _options = devOptions;
     }
 
     protected override Task<AuthenticateResult> HandleAuthenticateAsync()
     {
-        // Auto-authenticate in development mode
-        var claims = new[]
+        var dev = _options.Value;
+
+        var claims = new List<Claim>
         {
-            new Claim(ClaimTypes.Name, "Developer"),
-            new Claim(ClaimTypes.Email, "dev@foodrescue.local"),
-            new Claim(ClaimTypes.Role, "Developer"),
+            new Claim(ClaimTypes.Name, dev.Name),
+            new Claim(ClaimTypes.Email, dev.Email)
         };
 
-        var identity = new ClaimsIdentity(claims, Scheme.Name);
+        foreach (var role in dev.Roles ?? Array.Empty<string>())
+        {
+            claims.Add(new Claim(ClaimTypes.Role, role));
+        }
+
+        // Explicitly set role claim type
+        var identity = new ClaimsIdentity(
+            claims,
+            authenticationType: Scheme.Name,
+            nameType: ClaimTypes.Name,
+            roleType: ClaimTypes.Role);
+
         var principal = new ClaimsPrincipal(identity);
         var ticket = new AuthenticationTicket(principal, Scheme.Name);
 

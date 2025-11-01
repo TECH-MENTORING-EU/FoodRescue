@@ -8,17 +8,20 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove=".github\**" />
+    <Content Remove=".github\**" />
+    <EmbeddedResource Remove=".github\**" />
+    <None Remove=".github\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Azure.AI.OpenAI" Version="2.1.0" />
     <PackageReference Include="Azure.Core" Version="1.49.0" />
     <PackageReference Include="Bogus" Version="35.6.4" />
     <PackageReference Include="Dapper" Version="2.1.66" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.Negotiate" Version="9.0.10" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.OpenIdConnect" Version="9.0.0" />
     <PackageReference Include="Microsoft.Data.SqlClient" Version="6.1.2" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Include=".github\copilot-instructions.md" />
-    <None Include=".github\reasons.md" />
   </ItemGroup>
 
   <ItemGroup>

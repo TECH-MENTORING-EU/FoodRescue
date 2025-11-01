@@ -1,0 +1,80 @@
+@page "/auth-debug"
+@attribute [Microsoft.AspNetCore.Authorization.AllowAnonymous]
+@using System.Security.Claims
+@inject AuthenticationStateProvider AuthStateProvider
+@inject Microsoft.Extensions.Options.IOptions<FoodRescue.Web.Authentication.DevAuthOptions>? DevAuthOptions
+
+<h3>Authentication Debug</h3>
+
+@if (_user is null)
+{
+    <p>Loading auth state...</p>
+}
+else
+{
+    <section>
+        <h4>Identity</h4>
+        <ul>
+            <li><strong>IsAuthenticated:</strong> @_user.Identity?.IsAuthenticated</li>
+            <li><strong>Name:</strong> @_user.Identity?.Name</li>
+            <li><strong>AuthenticationType:</strong> @(_user.Identity as ClaimsIdentity)?.AuthenticationType</li>
+            <li><strong>RoleClaimType:</strong> @(((_user.Identity as ClaimsIdentity)?.RoleClaimType) ?? "(n/a)")</li>
+            <li><strong>NameClaimType:</strong> @(((_user.Identity as ClaimsIdentity)?.NameClaimType) ?? "(n/a)")</li>
+        </ul>
+    </section>
+
+    <section>
+        <h4>Roles</h4>
+        @if (_roles.Length == 0)
+        {
+            <p>(no role claims)</p>
+        }
+        else
+        {
+            <ul>
+                @foreach (var r in _roles)
+                {
+                    <li>@r</li>
+                }
+            </ul>
+        }
+    </section>
+
+    <section>
+        <h4>All Claims (@_user.Claims.Count())</h4>
+        <ul>
+            @foreach (var c in _user.Claims)
+            {
+                <li><strong>@c.Type:</strong> @c.Value</li>
+            }
+        </ul>
+    </section>
+
+    <section>
+        <h4>Expected (DevAuthOptions)</h4>
+        @if (DevAuthOptions?.Value is null)
+        {
+            <p>(DevAuthOptions not configured)</p>
+        }
+        else
+        {
+            <ul>
+                <li><strong>Name:</strong> @DevAuthOptions.Value.Name</li>
+                <li><strong>Email:</strong> @DevAuthOptions.Value.Email</li>
+                <li><strong>Roles:</strong> @(DevAuthOptions.Value.Roles is null ? "(null)" : string.Join(", ", DevAuthOptions.Value.Roles))</li>
+            </ul>
+        }
+    </section>
+}
+
+@code {
+    private ClaimsPrincipal? _user;
+    private string[] _roles = Array.Empty<string>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var state = await AuthStateProvider.GetAuthenticationStateAsync();
+        _user = state.User;
+        _roles = _user.FindAll(ClaimTypes.Role).Select(c => c.Value).ToArray();
+    }
+}

@@ -6,7 +6,6 @@
 ## 1. Meta-Instructions for AI Assistants
 
 ### 1.1 General Principles
-- In Ask mode if asked for solution always give solution in numered steps and substeps, and ask which one want to be implemented
 - Be **concise and specific** — no boilerplate or filler.  
 - **Code first**, explanation second.  
 - Preserve formatting and indentation exactly.  
