@@ -1,6 +1,6 @@
 ﻿@page "/food-recognizer"
 @using Microsoft.AspNetCore.Authorization
-@attribute [Authorize]
+@attribute [Authorize(Policy = "DeveloperOnly")]
 
 @inject HttpClient Http
 @inject IConfiguration Configuration

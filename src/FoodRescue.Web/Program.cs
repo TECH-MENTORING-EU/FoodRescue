@@ -1,41 +1,18 @@
 using FoodRescue.Web.Components;
 using FoodRescue.Web.Services;
 using FoodRescue.Web.Repositories;
-using Microsoft.AspNetCore.Authentication;
 using FoodRescue.Web.Authentication;
-using Microsoft.AspNetCore.Authentication.Negotiate;
+using FoodRescue.Web.Configuration;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-if (builder.Environment.IsDevelopment())
-{
-    // Use the dev authentication scheme during development
-    builder.Services.AddAuthentication(options =>
-    {
-        options.DefaultScheme = "DevAuth";
-        options.DefaultChallengeScheme = "DevAuth";
-    }).AddDevAuthentication();
-}
-else
-{
-    // Use Windows Authentication in other environments
-    builder.Services.AddAuthentication(NegotiateDefaults.AuthenticationScheme)
-        .AddNegotiate();
-}
+// AuthN/Z
+builder.Services
+    .AddAppAuthentication(builder.Configuration, builder.Environment)
+    .AddAppAuthorization();
 
-
-builder.Services.AddAuthorization(options =>
-{
-    // Sets the fallback policy to require authenticated users for all pages.
-    options.FallbackPolicy = options.DefaultPolicy;
-});
-
-// For Blazor to expose the authentication state as a cascading parameter.
-builder.Services.AddCascadingAuthenticationState();
-
-// Add the HttpContextAccessor service for accessing the user's identity.
-builder.Services.AddHttpContextAccessor();
+// Options/config binding
+builder.Services.Configure<FeatureFlags>(builder.Configuration.GetSection("FeatureFlags"));
 
 // Add services to the container.
 builder.Services.AddRazorComponents()
@@ -47,19 +24,10 @@ builder.Services.AddScoped<ITestDataService, TestDataService>();
 
 builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(builder.Configuration["ApiBaseAddress"] ?? "http://localhost:5139") });
 
-builder.Services.AddAuthentication("DevScheme")
-    .AddScheme<AuthenticationSchemeOptions, DevAuthenticationHandler>("DevScheme", null);
-
-builder.Services.AddScoped<FoodAnalysisStore>();
-
-
 var app = builder.Build();
 
 app.UseAuthentication();
 app.UseAuthorization();
-
-
-
 
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
