@@ -8,7 +8,7 @@ namespace FoodRescue.Web.Authentication;
 public class DevAuthenticationHandler : AuthenticationHandler<AuthenticationSchemeOptions>
 {
     public DevAuthenticationHandler(
-        IOptionsMonitor<AuthenticationSchemeOptions> options,
+        IOptionsMonitor<AuthenticationSchemeOptions> options, 
         ILoggerFactory logger,
         UrlEncoder encoder)
         : base(options, logger, encoder)
