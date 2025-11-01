@@ -3,10 +3,16 @@
 @using System.Security.Claims
 @inject AuthenticationStateProvider AuthStateProvider
 @inject Microsoft.Extensions.Options.IOptions<FoodRescue.Web.Authentication.DevAuthOptions>? DevAuthOptions
+@inject Microsoft.Extensions.Options.IOptions<FoodRescue.Web.Configuration.FeatureFlags> FeatureFlags
+@inject NavigationManager Nav
 
 <h3>Authentication Debug</h3>
 
-@if (_user is null)
+@if (!_enabled)
+{
+    <p>Not available.</p>
+}
+else if (_user is null)
 {
     <p>Loading auth state...</p>
 }
@@ -70,9 +76,18 @@ else
 @code {
     private ClaimsPrincipal? _user;
     private string[] _roles = Array.Empty<string>();
+    private bool _enabled;
 
     protected override async Task OnInitializedAsync()
     {
+        _enabled = FeatureFlags.Value.AuthDebugVisible;
+        if (!_enabled)
+        {
+            // Redirect away if the feature is disabled
+            Nav.NavigateTo("/", replace: true);
+            return;
+        }
+
         var state = await AuthStateProvider.GetAuthenticationStateAsync();
         _user = state.User;
         _roles = _user.FindAll(ClaimTypes.Role).Select(c => c.Value).ToArray();

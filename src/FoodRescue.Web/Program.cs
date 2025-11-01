@@ -2,6 +2,7 @@ using FoodRescue.Web.Components;
 using FoodRescue.Web.Services;
 using FoodRescue.Web.Repositories;
 using FoodRescue.Web.Authentication;
+using FoodRescue.Web.Configuration;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -9,6 +10,9 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services
     .AddAppAuthentication(builder.Configuration, builder.Environment)
     .AddAppAuthorization();
+
+// Options/config binding
+builder.Services.Configure<FeatureFlags>(builder.Configuration.GetSection("FeatureFlags"));
 
 // Add services to the container.
 builder.Services.AddRazorComponents()
