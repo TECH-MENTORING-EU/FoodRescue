@@ -86,7 +86,7 @@ Your primary goal → help build a **high-performance, secure, maintainable Blaz
 
 ---
 
-## 4. Blazor Architecture Guidelines
+## 4. Blazor Architecture & Safety
 
 ### 4.1 Render Mode
 - Global: `InteractiveServer`.  
@@ -102,6 +102,11 @@ Your primary goal → help build a **high-performance, secure, maintainable Blaz
 - Shared state → Scoped DI services.  
 - Subscribe in `OnInitialized`; unsubscribe in `Dispose()`.  
 - Call `StateHasChanged()` on state updates.
+
+### 4.4 Circuit Safety
+- Avoid static mutable state; prefer scoped services for per-user state.
+- Handle disconnects/reconnects gracefully; keep per-user memory bounded.
+- Use `ErrorBoundary` around pages; route to `Error.razor` on unhandled errors.
 
 ---
 
@@ -129,29 +134,32 @@ Your primary goal → help build a **high-performance, secure, maintainable Blaz
 
 ---
 
-## 6. Data Access (Dapper)
+## 6. Data Access & Migrations
 
-- All queries must be parameterized.  
-- No string interpolation or concatenation.  
+### 6.1 Dapper
+- All queries must be parameterized. No string interpolation or concatenation.
 - Use async Dapper methods (`QueryAsync`, `ExecuteAsync`, etc.).  
 - Register `IDbConnection` in DI (Transient).  
 - Repositories receive connections via DI.  
-- Transactions explicit in services (no generic UoW).  
 - Use multi-mapping with `splitOn`.
 
----
-
-## 7. Database Migrations (FluentMigrator)
-
-- FluentMigrator C# classes only — no raw SQL or DbUp.  
-- Run migrations on startup (`.Migrate()`).  
+### 6.2 Migrations (FluentMigrator)
+- FluentMigrator C# classes prioritization —  Raw SQL as last resort.  
+- Run migrations on startup (`.Migrate()`) in controlled environments.
 - Prefer fluent API (`Create.Table()`, `Alter.Column()`).
+- A version table is required.
+- Prefer migrations for seed data over ad-hoc code.
+
+### 6.3 Data Guardrails
+- Dapper: always parameterized, async, and with `CancellationToken`.
+- Connection pooling: set `MaxPoolSize`, `MinPoolSize`, and `Pooling=true` in connection strings.
+- Transactions are explicit at service boundaries; keep them short-lived. No generic UoW.
 
 ---
 
-## 8. Frontend Stack Directives (Blazor Server BFF)
+## 7. Frontend & Accessibility
 
-### 8.1 HTML (Semantic + Secure)
+### 7.1 HTML (Semantic + Secure)
 - Use semantic HTML5 elements: `<main>`, `<nav>`, `<header>`, `<footer>`, `<section>`, `<article>`.  
 - Use `<button>` for actions — never `<div @onclick>` or fake links.  
 - One `<h1>` per page; don’t skip levels.  
@@ -159,7 +167,7 @@ Your primary goal → help build a **high-performance, secure, maintainable Blaz
 - No `<form action="">`; Blazor handles submissions via events.  
 - No hidden fields / manual form tokens — cookies manage session.
 
-### 8.2 CSS Flexbox & Tailwind Layouts
+### 7.2 CSS Flexbox & Tailwind Layouts
 - Flexbox for 1-D; Grid only for 2-D.  
 - **Patterns:**  
   - Center → `flex items-center justify-center`  
@@ -167,7 +175,7 @@ Your primary goal → help build a **high-performance, secure, maintainable Blaz
   - Cards → `flex flex-wrap gap-4`  
 - Use Tailwind responsive prefixes (`sm: md: lg:`); avoid manual media queries.
 
-### 8.3 JavaScript (for Blazor Interop ONLY)
+### 7.3 JavaScript (for Blazor Interop ONLY)
 - All JS → `/wwwroot/js/`; no inline `<script>`.  
 - Start each file with `'use strict';`.  
 - Invoke via `IJSRuntime`.  
@@ -176,18 +184,22 @@ Your primary goal → help build a **high-performance, secure, maintainable Blaz
 - **Forbidden:** `fetch()`, XHR, HTTP calls, cookie/token access.  
 - JS may only enhance UI (e.g., scroll, focus, clipboard).
 
-### 8.4 Tailwind CSS (Design System)
+### 7.4 Tailwind CSS (Design System)
 - `tailwind.config.js` = single source of truth.  
 - No magic numbers (`w-[123px]`, `text-[#aabbcc]`).  
 - Reference tokens from `theme`; extend with semantic names.  
 - Sort classes via `prettier-plugin-tailwindcss`.  
-  **Example:**  
-  - `content` array must scan `.razor` + `.html`.  
+- `content` array must scan `.razor` + `.html`.  
 - Prefer utilities over custom CSS.  
 - Use class-based dark mode (`dark:`).  
 - No inline `style=""`.
 
-### 8.5 AI & Copilot Frontend Rules
+### 7.5 Accessibility & UX
+- All inputs require `<label for="">`; announce async state changes via live regions.
+- Manage focus on navigation and major UI updates.
+- Buttons default to `type="button"` unless submitting via Blazor handlers.
+
+### 7.6 AI & Copilot Frontend Rules
 - Never generate client-side auth or token logic.  
 - Preserve Tailwind order and spacing.  
 - Suggest adding tokens to config if missing.  
@@ -196,7 +208,9 @@ Your primary goal → help build a **high-performance, secure, maintainable Blaz
 
 ---
 
-## 9. Visual Studio Copilot Chat Integration
+## 8. Visual Studio & Tooling
+
+### 8.1 Copilot Chat Integration
 - Default context: Blazor Server BFF (.NET 9).  
 - Output ≤ 50 lines unless requested.  
 - Include file path and layer context.  
@@ -204,9 +218,13 @@ Your primary goal → help build a **high-performance, secure, maintainable Blaz
 - Prefer incremental edits.  
 - Maintain Tailwind order and HTML semantics.
 
+### 8.2 IDE & Build Configuration
+- Enforce analyzers: enable .NET analyzers, nullable, and treat warnings as errors in CI.
+- Tailwind: ensure `prettier-plugin-tailwindcss` sorts classes; add `npm run watch` and integrate with __Task Runner Explorer__.
+
 ---
 
-## 10. Repository Layout
+## 9. Repository Layout
 . -> src/FoodRescue.Web/
   /Authentication → OIDC + Cookie Auth setup, auth services, auth policies, auth attributes
   /Components → Blazor components (.razor, .razor.cs), Blazor Server BFF
@@ -217,3 +235,44 @@ Your primary goal → help build a **high-performance, secure, maintainable Blaz
   /Migrations -> all Migrations (FluentMigrator), FluentMigrator configuration
 tests/FoodRescue.Web.Tests/ → unit and integration tests for the Web project
 database/ → database setup scripts, seed data, 
+
+---
+## 10. Configuration & Environment
+
+### 10.1 Environment & Auth Modes (Repo-Specific)
+- Dev: use `DevAuth` (local only). Never ship or enable outside Development.
+- Non-dev: current repo uses Windows Authentication (`Negotiate`). If/when moving to OIDC, follow §3 strictly and remove `Negotiate`.
+- Do not inject `HttpClient` into `.razor` files. Only repositories/services may call external APIs.
+- Seed data must be dev-only and idempotent. Replace startup seeding in `Program.cs` with a dev-only `IHostedService` behind a config flag.
+
+### 10.2 Secrets & Configuration
+- Use __Project > Manage User Secrets__ for local secrets. Never commit secrets.
+- Configuration precedence: `appsettings.json` → `appsettings.{Environment}.json` → env vars → user secrets.
+- Feature flags for dev-only behaviors (e.g., seeding): `FeatureFlags:EnableDevSeeding`.
+
+---
+
+## 11. Outbound HTTP & Resilience
+
+- Use `IHttpClientFactory` with typed clients; configure:
+  - Timeouts (≤ 10s), automatic decompression, default headers.
+  - Polly policies: retry-with-jitter for transient 5xx/408, circuit breaker, and timeout.
+- Attach auth only server-side. Never set `Authorization` headers in UI code.
+- Always pass `CancellationToken` from caller → service → HTTP/Dapper.
+
+---
+
+## 12. Error Handling, Logging, Telemetry
+
+- Services map exceptions to domain-specific results; UI never catches.
+- Use structured logging (`ILogger<T>`), no PII. Include correlation id.
+- Consider Serilog sinks; minimum level Information in prod, Debug in dev.
+- Validate inputs with FluentValidation in Application/Service layer only.
+
+---
+
+## 13. Testing Policy
+
+- Unit: services with fakes; avoid over-mocking. Repo tests hit a temp DB/container; do not mock Dapper.
+- Integration: `WebApplicationFactory` with a fake auth scheme (no real IdP). Verify auth policies and routes.
+- Components: bUnit for `.razor` tests; no HTTP. Use `AuthorizeView` test patterns. Ensure accessibility assertions (labels, roles, tab order).
