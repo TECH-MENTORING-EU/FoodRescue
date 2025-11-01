@@ -1,37 +1,46 @@
 ﻿@page "/food-recognitions"
 @using FoodRescue.Web.Services
 @using FoodRescue.Web.Models
-@inject ITestDataService TestDataService
-@inject ILogger<Donations> Logger
 @inject FoodAnalysisStore Store
-@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@inject NavigationManager Navigation
+
+<h4 class="text-base font-medium mb-6 text-gray-700">Poprzednie analizy:</h4>
 
 @if (Store.Results.Any())
 {
-
-    <h4 class="text-base font-medium mb-6 text-gray-700">Poprzednie analizy:</h4>
-
     <div class="grid md:grid-cols-3 gap-8 mb-12">
         @foreach (var item in Store.Results)
         {
-            <div class="bg-white rounded-lg shadow-lg p-6 hover:shadow-xl transition-shadow">
+            <div class="
+
+
+
+
+white rounded-lg shadow-lg p-6 hover:shadow-xl transition-shadow">
                 <img src="@item.ImageBase64"
                      alt="@item.Caption"
-                     class="w-full aspect-square object-cover rounded-md" />
+                     class="w-full aspect-square object-cover rounded-md mb-4" />
 
-                <p class="mt-1 text-xs text-gray-600 text-center truncate w-full w-24">
+                <p class="mt-1 text-xs text-gray-600 text-center truncate w-full">
                     @item.Caption
                 </p>
+
+                <button class="mt-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                        @onclick="() => NavigateToDetails(item.Id)">
+                    Zobacz detale
+                </button>
             </div>
         }
     </div>
-
 }
 else
 {
-    <p class="text-sm text-gray-500 italic">Brak wyników analizy.</p>
+    <p class="text-sm text-gray-500 italic mt-2">Brak analiz.</p>
 }
 
 @code {
-
+    void NavigateToDetails(Guid id)
+    {
+        Navigation.NavigateTo($"/food-details/{id}");
+    }
 }

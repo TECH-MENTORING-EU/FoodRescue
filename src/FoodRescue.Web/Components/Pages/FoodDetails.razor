@@ -1,0 +1,186 @@
+﻿@page "/food-details/{Id:guid}"
+@using FoodRescue.Web.Services
+@using FoodRescue.Web.Models
+@using System.Text.Json
+@inject FoodAnalysisStore Store
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+
+<h3>@caption</h3>
+
+@if (foodItems != null && foodItems.Any())
+{
+    <table class="min-w-full border border-gray-300 rounded-md mt-4">
+        <thead class="bg-gray-100">
+            <tr>
+                <th class="px-2 py-1 border-b">Produkt</th>
+                <th class="px-2 py-1 border-b">Ilość dostępna</th>
+                <th class="px-2 py-1 border-b">Rezerwuj</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var food in foodItems)
+            {
+                <tr class="hover:bg-gray-50">
+                    <td class="px-2 py-1 border-b">@food.product</td>
+                    <td class="px-2 py-1 border-b">@food.amount</td>
+                    <td class="px-2 py-1 border-b">
+                        <input type="number"
+                               min="0"
+                               max="@((food.numericAmount ?? 1))"
+                               @bind="food.reserveInput"
+                               class="w-16 border rounded px-1 py-0.5 mr-1" />
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <button class="mt-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 "
+            @onclick="ReserveFood">
+            Rezerwuj
+    </button>
+}
+
+
+else
+{
+    <p class="text-sm text-gray-500 italic mt-2">Brak produktów do wyświetlenia.</p>
+}
+
+<button class="mt-4 px-4 py-2 bg-gray-300 rounded hover:bg-gray-400" @onclick="GoBack">Back</button>
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    string caption = "";
+    List<FoodItem> foodItems = new();
+
+    protected override void OnInitialized()
+    {
+        var item = Store.Results.FirstOrDefault(r => r.Id == Id);
+        if (item != null)
+        {
+            caption = item.Caption;
+
+            if (item.FoodItems == null || !item.FoodItems.Any())
+            {
+                try
+                {
+                    string cleanedJson = item.JsonTable.Replace("`", "")
+                                                       .Replace("json", "", StringComparison.OrdinalIgnoreCase)
+                                                       .Trim();
+
+                    var foodItemsList = new List<FoodItem>();
+
+                    if (cleanedJson.StartsWith("["))
+                    {
+                        var itemsArray = JsonSerializer.Deserialize<List<Dictionary<string, string>>>(cleanedJson) ?? new List<Dictionary<string, string>>();
+                        foreach (var dict in itemsArray)
+                        {
+                            foreach (var kvp in dict)
+                            {
+                                foodItemsList.Add(new FoodItem
+                                {
+                                    product = kvp.Key,
+                                    amount = kvp.Value,
+                                    numericAmount = ExtractNumericAmount(kvp.Value)
+                                });
+                            }
+                        }
+                    }
+                    else if (cleanedJson.StartsWith("{"))
+                    {
+                        var dict = JsonSerializer.Deserialize<Dictionary<string, string>>(cleanedJson) ?? new();
+                        foodItemsList = dict.Select(kvp => new FoodItem
+                        {
+                            product = kvp.Key,
+                            amount = kvp.Value,
+                            numericAmount = ExtractNumericAmount(kvp.Value)
+                        }).ToList();
+                    }
+
+                    item.FoodItems = foodItemsList;
+                }
+                catch (Exception ex)
+                {
+                    JS.InvokeVoidAsync("console.log", $"JSON parsing failed: {ex.Message}");
+                }
+            }
+
+            foodItems = item.FoodItems;
+        }
+
+
+
+    }
+
+
+    void GoBack()
+    {
+        Navigation.NavigateTo("/food-recognitions");
+    }
+
+    public class FoodItem
+    {
+        public string product { get; set; } = "";
+        public string amount { get; set; } = "";
+        public int? numericAmount { get; set; }
+        public int reserveInput { get; set; } = 0;
+    }
+
+    int? ExtractNumericAmount(string amount)
+    {
+        if (string.IsNullOrWhiteSpace(amount))
+            return null;
+
+        // Extract digits at the beginning of the string
+        var match = System.Text.RegularExpressions.Regex.Match(amount, @"^\d+");
+        if (match.Success && int.TryParse(match.Value, out int value))
+        {
+            return value;
+        }
+
+        return null; // non-numeric like "garść", "kilka"
+    }
+
+
+    void ReserveFood()
+    {
+        foreach (var food in foodItems)
+        {
+            if (food.numericAmount.HasValue)
+            {
+                if (food.reserveInput > 0 && food.reserveInput <= food.numericAmount.Value)
+                {
+                    food.numericAmount -= food.reserveInput;
+
+                    var parts = food.amount.Split(" ");
+                    food.amount = food.numericAmount == 0
+                        ? "Brak"
+                        : food.numericAmount + (parts.Length > 1 ? " " + parts[1] : "");
+                }
+            }
+            else
+            {
+                // Non-numeric: mark as Brak
+                food.amount = "Brak";
+            }
+
+            // Reset input for next reservation
+            food.reserveInput = 0;
+        }
+
+        // Persist changes to the store
+        var storedItem = Store.Results.FirstOrDefault(r => r.Id == Id);
+        if (storedItem != null)
+        {
+            storedItem.FoodItems = foodItems;
+        }
+    }
+
+
+
+
+
+}

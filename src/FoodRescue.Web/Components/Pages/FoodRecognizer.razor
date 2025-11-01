@@ -5,6 +5,7 @@
 @inject HttpClient Http
 @inject IConfiguration Configuration
 @inject FoodAnalysisStore Store
+@inject IJSRuntime JS
 
 
 @using System.Net.Mime
@@ -96,9 +97,9 @@
     private bool isLoading = false;
     private string? errorMessage;
     private string? imageCaption;
+    private string? jsonTable;
     private bool fileIsMissing = true;
     private byte[] imageBytes;
-
     private async Task HandleFileSelected(InputFileChangeEventArgs e)
     {       
         errorMessage = null;
@@ -167,7 +168,9 @@
             var textToSend = string.IsNullOrWhiteSpace(promptText) ? DefaultPrompt : promptText;
 
             var userMessage = new UserChatMessage([
-                ChatMessageContentPart.CreateTextPart(textToSend),
+                ChatMessageContentPart.CreateTextPart(textToSend + " Następnie wypisz listę wykrytych produktów w formacie JSON, **jako tablicę obiektów**, w formacie: [{\"nazwa_produktu\":\"ilość\"}, ...]. W miejscu gdzie to zamieścisz umieść słowo JSON. Nie dodawaj zbędnych znaków ani nazwy jsona."
+),
+
                 ChatMessageContentPart.CreateImagePart(new BinaryData(imageBytes), file.ContentType)
             ]);
 
@@ -177,10 +180,21 @@
             // For more robust handling, check the completion before accessing its properties
             if (completion != null && completion.Content != null && completion.Content.Any())
             {
-                imageCaption = completion.Content.First().Text.Trim();
+                string fullText = completion.Content.First().Text.Trim();
+                string[] parts = fullText.Split("JSON");
 
-                Store.Add(imagePreviewUrl!, imageCaption);
+                // Caption is everything before "JSON"
+                imageCaption = parts[0].Trim();
+
+                // JSON part is everything after "JSON"
+                jsonTable = parts.Length > 1 ? parts[1].Trim() : string.Empty;
+
+
+                await JS.InvokeVoidAsync("console.log", "Caption: " + jsonTable);
+                // Save cleaned caption and JSON to store
+                Store.Add(imagePreviewUrl!, imageCaption, jsonTable);
             }
+
         }
         catch (Exception ex)
         {
