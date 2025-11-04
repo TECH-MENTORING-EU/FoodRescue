@@ -22,6 +22,7 @@ builder.Services.AddScoped<IDatabaseService, DatabaseService>();
 builder.Services.AddScoped<IFoodDonationRepository, FoodDonationRepository>();
 builder.Services.AddScoped<ITestDataService, TestDataService>();
 builder.Services.AddScoped<FoodAnalysisStore>();
+builder.Services.AddScoped<ReservationService>();
 
 builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(builder.Configuration["ApiBaseAddress"] ?? "http://localhost:5139") });
 
