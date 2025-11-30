@@ -29,49 +29,15 @@ public static class AuthenticationExtensions
         }
         else
         {
-            var tenantId = config["EntraId:TenantId"];
-            var clientId = config["EntraId:ClientId"];
-            var clientSecret = config["EntraId:ClientSecret"];
-            var callbackPath = config["EntraId:CallbackPath"] ?? "/signin-oidc";
-
+            // Production: Use Azure App Service Easy Auth headers
             services.AddAuthentication(options =>
             {
-                options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
-                options.DefaultChallengeScheme = OpenIdConnectDefaults.AuthenticationScheme;
+                options.DefaultScheme = AzureEasyAuthDefaults.AuthenticationScheme;
+                options.DefaultChallengeScheme = AzureEasyAuthDefaults.AuthenticationScheme;
             })
-            .AddCookie(CookieAuthenticationDefaults.AuthenticationScheme, options =>
-            {
-                options.SlidingExpiration = true;
-                options.Cookie.HttpOnly = true;
-                options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
-            })
-            .AddOpenIdConnect(OpenIdConnectDefaults.AuthenticationScheme, options =>
-            {
-                options.Authority = $"https://login.microsoftonline.com/{tenantId}/v2.0";
-                options.ClientId = clientId;
-                options.ClientSecret = clientSecret;
-                options.CallbackPath = callbackPath;
-
-                options.ResponseType = OpenIdConnectResponseType.Code;
-                options.UsePkce = true;
-                options.SaveTokens = false;
-
-                options.Scope.Clear();
-                options.Scope.Add("openid");
-                options.Scope.Add("profile");
-                options.Scope.Add("email");
-
-                options.TokenValidationParameters = new TokenValidationParameters
-                {
-                    NameClaimType = "name",
-                    RoleClaimType = "roles"
-                };
-
-                options.ClaimActions.MapUniqueJsonKey(ClaimTypes.NameIdentifier, "sub");
-                options.ClaimActions.MapJsonKey(ClaimTypes.Name, "name");
-                options.ClaimActions.MapJsonKey(ClaimTypes.Email, "email");
-                options.ClaimActions.MapJsonKey(ClaimTypes.Role, "roles");
-            });
+            .AddScheme<AuthenticationSchemeOptions, AzureEasyAuthHandler>(
+                AzureEasyAuthDefaults.AuthenticationScheme,
+                _ => { });
         }
 
         return services;

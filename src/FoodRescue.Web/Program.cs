@@ -1,15 +1,14 @@
-using FoodRescue.Web.Components;
-using FoodRescue.Web.Services;
-using FoodRescue.Web.Repositories;
 using FoodRescue.Web.Authentication;
+using FoodRescue.Web.Components;
 using FoodRescue.Web.Configuration;
+using FoodRescue.Web.Repositories;
+using FoodRescue.Web.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// AuthN/Z
-builder.Services
-    .AddAppAuthentication(builder.Configuration, builder.Environment)
-    .AddAppAuthorization();
+// AuthN/Z configuration (environment-aware)
+builder.Services.AddAppAuthentication(builder.Configuration, builder.Environment);
+builder.Services.AddAppAuthorization();
 
 // Options/config binding
 builder.Services.Configure<FeatureFlags>(builder.Configuration.GetSection("FeatureFlags"));
@@ -28,14 +27,10 @@ builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(builder.
 
 var app = builder.Build();
 
-app.UseAuthentication();
-app.UseAuthorization();
-
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Error", createScopeForErrors: true);
-    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
     app.UseHsts();
 }
 
@@ -44,13 +39,17 @@ app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseAntiforgery();
 
+// AuthN/Z middleware
+app.UseAuthentication();
+app.UseAuthorization();
+
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
 using (var scope = app.Services.CreateScope())
 {
     var testDataService = scope.ServiceProvider.GetRequiredService<ITestDataService>();
-    testDataService.GenerateFoodDonations(); // Replace Seed() with GenerateFoodDonations()
+    testDataService.GenerateFoodDonations();
 }
 
 app.Run();
