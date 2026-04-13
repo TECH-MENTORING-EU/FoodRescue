@@ -1,0 +1,74 @@
+﻿@page "/my-reservations"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "User,Developer")]
+@using FoodRescue.Web.Models
+@using FoodRescue.Web.Services
+@inject ReservationService ReservationService
+@inject IJSRuntime JS
+@inject AuthenticationStateProvider AuthProvider
+
+<div class="container mx-auto px-4 py-8">
+    <div class="bg-white rounded-lg shadow-lg p-8 max-w-5xl mx-auto">
+        <h2 class="text-3xl font-bold text-gray-800 mb-6 border-b pb-2">Twoje rezerwacje</h2>
+
+        @if (reservations == null)
+        {
+            <p class="text-gray-500 italic text-center">Ładowanie...</p>
+        }
+        else if (!reservations.Any())
+        {
+            <p class="text-gray-500 italic text-center">Nie masz żadnych rezerwacji.</p>
+        }
+        else
+        {
+            <table class="w-full border border-gray-200 rounded-lg overflow-hidden shadow-sm">
+                <thead class="bg-green-50">
+                    <tr>
+                        <th class="px-4 py-3 text-left text-gray-700 font-semibold border-b">Produkt</th>
+                        <th class="px-4 py-3 text-left text-gray-700 font-semibold border-b">Ilość</th>
+                        <th class="px-4 py-3 text-left text-gray-700 font-semibold border-b">Data rezerwacji</th>
+                        <th class="px-4 py-3 text-left text-gray-700 font-semibold border-b">ID Analizy</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var r in reservations)
+                    {
+                        <tr class="hover:bg-gray-50 transition-colors">
+                            <td class="px-4 py-2 border-b">@r.Product</td>
+                            <td class="px-4 py-2 border-b">@r.ReservedAmount</td>
+                            <td class="px-4 py-2 border-b">@r.ReservedAt.ToString("yyyy-MM-dd HH:mm")</td>
+                            <td class="px-4 py-2 border-b text-gray-500 text-sm">@r.AnalysisId</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+
+        <div class="flex justify-start mt-6">
+            <button class="px-6 py-2 bg-gray-300 text-gray-800 rounded-md shadow hover:bg-gray-400 transition"
+                    @onclick="GoBack">
+                ← Wróć
+            </button>
+        </div>
+    </div>
+</div>
+
+@code {
+    private List<FoodReservation>? reservations;
+    private string currentUserId; // TODO: replace with actual logged-in user ID
+
+    protected override void OnInitialized()
+    {
+        var authState = AuthProvider.GetAuthenticationStateAsync().Result;
+        currentUserId = authState.User.ToString();
+        try
+        {
+            reservations = ReservationService.viewReservations(currentUserId);
+        }
+        catch (Exception ex)
+        {
+            JS.InvokeVoidAsync("console.error", $"Error loading reservations: {ex.Message}");
+        }
+    }
+
+    void GoBack() => JS.InvokeVoidAsync("history.back");
+}
